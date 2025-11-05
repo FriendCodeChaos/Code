@@ -1,2 +1,0 @@
-With all of this you can merge the files. the seperated files will just make it easer for other mods  to acses vars. as long as main.py has the Time() it will work well
-Time() will be every day. it will be called like Time(Days)
