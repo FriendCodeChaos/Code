@@ -91,7 +91,7 @@ def run_cats():
                 self.canvas.itemconfig(self.id, image=self.tk_image)
                 self.rotate_counter = 0
 
-    cats = [Cat(canvas, pil_frames) for _ in range(10)]
+    cats = [Cat(canvas, pil_frames) for _ in range(25)]
 
     def animate():
         for cat in cats:

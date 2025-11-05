@@ -2,20 +2,13 @@ import math
 import json, os
 import importlib.util
 import threading
-from Default_Stuff.Coins import Coins
-from Default_Stuff.Materials import Materails
-from Default_Stuff.Jobs import Jobs
-from Default_Stuff.people import people
-from Default_Stuff.Main import Time
-
-# ----- Setup classes -----
-class TimeTrack:
-    TotalDay = 0
-    Day = 0
-    Week = 0
-    Month = 0
-    Year = 0
-
+if __name__ == "__main__":
+    from Default_Stuff.Vars.Coins import Coins
+    from Default_Stuff.Vars.Materials import Materails
+    from Default_Stuff.Vars.Jobs import Jobs
+    from Default_Stuff.Vars.people import people
+    from Default_Stuff.Scripts.Commands import Commands
+from Mods import mods
 # ----- Save / Load -----
 def ClassToJson(cls):
     data = {}
@@ -70,7 +63,6 @@ def LoadData(path):
 ext = "json"
 SaveNamePath = ""
 
-# ----- People calculation -----
 def CaculateBornDeath():
     subclasses = [cls for cls in Jobs.__dict__.values() if isinstance(cls, type)]
     born_values = [cls.BornAdd for cls in subclasses]
@@ -79,117 +71,18 @@ def CaculateBornDeath():
     people.death = math.floor(sum(death_values) / len(death_values)*100)/100
     print(people.born, people.death)
 
-# ----- Mods -----
-class Mods:
-    def __init__(self, mod_list_file="mods.txt", mod_folder="Mods"):
-        self.mod_list_file = mod_list_file
-        self.mod_folder = mod_folder
-        self._loaded_mods = {}
-        self._lock = threading.Lock()
-
-    def load_mods(self):
-        choice = input("Load mods from 'mods.txt' or load all mods in folder? (txt/all): ").strip().lower()
-        mod_folders = []
-
-        if choice == "txt":
-            try:
-                with open(self.mod_list_file, "r") as f:
-                    mod_folders = [line.strip() for line in f if line.strip()]
-                print(f"Loaded mod list from {self.mod_list_file}: {mod_folders}")
-            except FileNotFoundError:
-                print(f"File '{self.mod_list_file}' not found. No mods loaded.")
-                return
-        elif choice == "all":
-            try:
-                mod_folders = [d for d in os.listdir(self.mod_folder)
-                               if os.path.isdir(os.path.join(self.mod_folder, d))]
-                print(f"Automatically detected mods: {mod_folders}")
-            except FileNotFoundError:
-                print(f"Mods folder '{self.mod_folder}' not found. No mods loaded.")
-                return
-        else:
-            print("Invalid choice. Please type 'txt' or 'all'.")
-            return
-
-        # Load main.py from each mod folder
-        for mod_name in mod_folders:
-            mod_path = os.path.join(self.mod_folder, mod_name)
-            main_py_path = os.path.join(mod_path, 'main.py')
-
-            if os.path.isdir(mod_path) and os.path.isfile(main_py_path):
-                try:
-                    spec = importlib.util.spec_from_file_location(f"{mod_name}.main", main_py_path)
-                    mod = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(mod)
-                    with self._lock:
-                        self._loaded_mods[mod_name] = mod
-                        setattr(self, mod_name, mod)  # optional
-                    print(f"Loaded {mod_name}/main.py successfully.")
-                except Exception as e:
-                    print(f"Failed to load {mod_name}/main.py: {e}")
-            else:
-                print(f"Skipped {mod_name}: no main.py found.")
-
-    def list_mods(self):
-        with self._lock:
-            return list(self._loaded_mods.keys())
-
-    def run_time_on_all(self, arg):
-        with self._lock:
-            for mod_name, mod in self._loaded_mods.items():
-                if hasattr(mod, "Time") and callable(getattr(mod, "Time")):
-                    try:
-                        getattr(mod, "Time")(arg)
-                    except Exception as e:
-                        print(f"Error calling 'Time({arg})' in mod '{mod_name}': {e}")
-                else:
-                    print(f"Error Loading '{mod_name}' Error code is 1")
-
-# ----- Commands -----
-def Stats():
-    print(f"People:{math.floor(people.ammount)}")
-    print(f"People per year:{math.floor(people.ammount*people.born)}")
-    print(f"Deaths:{math.floor(people.ammount*people.death)}")
-    print(f"Salt:{math.floor(Materails.mine.Salt)}")
-    # ... add other stats as needed ...
-
-def Help():
-    print("type save to save data. Every month it will auto save")
-    print("stats for current stats")
-
-def HTP():
-    print("To go to the next time you type time")
-    print("you then need to type [Day,Week,Month,Year]")
-    print("This can be shortened to [D,W,M,Y]")
-
-# ----- Text input -----
 
 def Text():
     global mods
     global SaveNamePath
     Userin = input().strip().lower()
     SplitCommand = Userin.split(" ")
+    Commands(SplitCommand)
+    mods.run_all("Commands",SplitCommand)
+    
 
-    if SplitCommand[0] == "help":
-        Help()
-    elif SplitCommand[0] == "how to play":
-        HTP()
-    elif SplitCommand[0] == "stats":
-        Stats()
-    elif SplitCommand[0] in ("y", "year"):
-        TimeTrack.TotalDay += 365
-        mods.run_time_on_all(1)
-        Time(365)
-    elif SplitCommand[0] == "save":
-        DataSave()
-    elif SplitCommand[0] == "load":
-        if len(SplitCommand) > 1:
-            path = f"save/{SplitCommand[1]}.{ext}"
-            LoadData(path)
-        else:
-            LoadData(SaveNamePath)
+    
 
-# ----- Main -----
 def main():
     global mods
     global SaveNamePath
@@ -197,7 +90,6 @@ def main():
     print("type how to play for instructions")
     print("type help for commands")
 
-    # Normalize Jobs percentages
     for attr in dir(Jobs):
         JobClass = getattr(Jobs, attr)
         if isinstance(JobClass, type):
@@ -223,8 +115,6 @@ def main():
             break
 
     DataSave()
-    mods = Mods()
-    mods.load_mods()
     print("Loaded mods:", mods.list_mods())
 
     # Main loop
